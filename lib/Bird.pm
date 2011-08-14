@@ -8,9 +8,10 @@ sub new {
 		my ($class,%cnf) = @_;
 		my $name = delete $cnf{name};
 		my $self = bless {
-				name => $name,
+				name => $name || "Anonymous",
 				tweets => [],
-				follows => [],
+				followings => {},
+				followers => {},				
 		},$class;
 		return $self;
 }
@@ -22,6 +23,7 @@ sub get_name {
 
 sub tweet {
 		my ($self,$tweet) = @_;
+		return "No tweet." if($tweet eq "");
 		push(@{$self->{tweets}},Tweet->new($self,$tweet));
 }
 
@@ -32,33 +34,49 @@ sub get_tweets {
 
 sub follow {
 		my ($self,$user) = @_;
-		for(my $i=0;$i<scalar(@{$self->{follows}});$i++){
-				return if($user->get_name eq @{$self->{follows}}[$i]->get_name);
-		}
-		push(@{$self->{follows}},$user);
+		if(defined($self->{followings}{$user->get_name}) &&
+			 $self->{followings}{$user->get_name} eq "block"){
+				return "You have been blocked.";
+		} 
+		$self->{followings}{$user->get_name} = $user;
+		$user->{followers}{$self->get_name} = $self;
 }
 
 sub unfollow {
 		my ($self,$user) = @_;
-		for(my $i=0;$i<scalar(@{$self->{follows}});$i++){
-				if($user->get_name eq @{$self->{follows}}[$i]->get_name){
-						splice(@{$self->{follows}},$i,1);
-						last;
-				}
-		}
+		delete $self->{followings}{$user->get_name};
+		delete $user->{followers}{$self->get_name};		
+}
+
+sub block {
+		my ($self,$user) = @_;
+		$self->{followers}{$user->get_name} = "block";
+		$user->{followings}{$self->get_name} = "block"; 
+}
+
+sub unblock {
+		my ($self,$user) = @_;
+		delete $self->{followers}{$user->get_name};
+		delete $user->{followings}{$self->get_name};		
 }
 
 sub friends_timeline {
 		my ($self) = @_;
 		my $timeline = [];
-		for my $user (@{$self->{follows}}){
+		for my $user (values(%{$self->{followings}})){
+				next if($user eq "block");
 				for my $tweet (@{$user->get_tweets}){
-						push(@$timeline,$tweet);
+						if($tweet->{mention} ne "" &&
+							 $tweet->{mention} eq $self->get_name){ 
+								push(@$timeline,$tweet);
+						}elsif($tweet->{mention} eq ""){
+								push(@$timeline,$tweet);
+						}
 				}
 		}
-		my @new_timeline = sort { $b->get_id <=> $a->get_id } @$timeline;
-		return [@new_timeline];
+		return [ sort { $b->get_id <=> $a->get_id } @$timeline ];
 }
 
 1;
+
 

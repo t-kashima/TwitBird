@@ -5,11 +5,15 @@ use warnings;
 our $tweet_id = 0; 
 sub new {
 		my ($class,$user,$tweet) = @_;
+		my $mention_user = "";
+		if($tweet =~ /^@(.+?)\s.+?$/){
+				$mention_user = $1;
+		}
 		my $data_structure = {
 				id => ++$tweet_id,
 				user => $user,
 				tweet => $tweet,
-				time  => time,
+				mention => $mention_user,
 		};
 		my $self = bless $data_structure, $class;
 		return $self;
@@ -23,16 +27,6 @@ sub message {
 sub get_id {
 		my ($self) = @_;
 		return $self->{id};
-}
-
-sub get_tweet {
-		my ($self) = @_;
-		return $self->{tweet};
-}
-
-sub get_time {
-		my ($self) = @_;
-		return $self->{time};
 }
 
 1;
